@@ -36,3 +36,7 @@ RUN pecl install pdo_sqlsrv sqlsrv && \
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
+
+COPY . .
+
+CMD ["php", "-S", "0.0.0.0:80", "-t", "public"]

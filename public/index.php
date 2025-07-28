@@ -4,6 +4,8 @@ require __DIR__ . '/../vendor/autoload.php';
 use Slim\Factory\AppFactory;
 use Illuminate\Database\Capsule\Manager as Capsule;
 
+date_default_timezone_set('Europe/Warsaw');
+
 $app = AppFactory::create();
 
 // Настройка Eloquent под MSSQL
