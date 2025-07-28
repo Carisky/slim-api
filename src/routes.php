@@ -2,41 +2,52 @@
 use Slim\App;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
-use App\Models\User;
+use App\Services\LimitChecker;
 
 /**
  * @OA\Get(
- *   path="/users",
- *   summary="Get all users",
+ *   path="/api/limits/check/{pc}",
+ *   summary="Check license limit for PC",
+ *   @OA\Parameter(
+ *     name="pc",
+ *     in="path",
+ *     required=true,
+ *     description="PC name",
+ *     @OA\Schema(type="string")
+ *   ),
  *   @OA\Response(
  *     response=200,
- *     description="List of users",
- *     @OA\JsonContent(
- *       type="array",
- *       @OA\Items(ref="#/components/schemas/User")
- *     )
+ *     description="OK"
+ *   ),
+ *   @OA\Response(
+ *     response=404,
+ *     description="Session not found"
+ *   ),
+ *   @OA\Response(
+ *     response=429,
+ *     description="User over limit"
  *   )
  * )
  */
-function getUsers(Request $request, Response $response): Response {
-    $users = User::all();
-    $response->getBody()->write($users->toJson());
-    return $response->withHeader('Content-Type', 'application/json');
-}
+function checkLimit(Request $request, Response $response, array $args): Response {
+    $pc = $args['pc'];
+    $checker = new LimitChecker();
+    $result = $checker->check($pc);
 
-/**
- * @OA\Get(
- *   path="/ping",
- *   summary="Ping test",
- *   @OA\Response(response=200, description="pong")
- * )
- */
-function ping(Request $request, Response $response): Response {
-    $response->getBody()->write(json_encode(['pong' => true]));
+    if ($result['status'] === 404) {
+        return $response->withStatus(404);
+    }
+
+    if ($result['status'] === 429) {
+        return $response->withStatus(429);
+    }
+
+    $response->getBody()->write(json_encode([
+        'user' => $result['user'] ?? null,
+    ]));
     return $response->withHeader('Content-Type', 'application/json');
 }
 
 return function (App $app) {
-    $app->get('/users', 'getUsers');
-    $app->get('/ping', 'ping');
+    $app->get('/api/limits/check/{pc}', 'checkLimit');
 };

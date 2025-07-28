@@ -6,17 +6,17 @@ use Illuminate\Database\Capsule\Manager as Capsule;
 
 $app = AppFactory::create();
 
-// Настройка Eloquent под Docker
+// Настройка Eloquent под MSSQL
 $capsule = new Capsule;
 $capsule->addConnection([
-    'driver'    => 'mysql',
-    'host'      => 'db', // << это имя docker-сервиса из docker-compose.yml
-    'database'  => 'slim',
-    'username'  => 'slim',
-    'password'  => 'slim',
-    'charset'   => 'utf8',
-    'collation' => 'utf8_unicode_ci',
-    'prefix'    => '',
+    'driver'   => 'sqlsrv',
+    'host'     => '192.168.1.88',
+    'database' => 'ERPXL_TSL',
+    'username' => 'sa_tsl',
+    'password' => '@nalizyGrudzien24@',
+    'trust_server_certificate' => true,
+    'charset'  => 'utf8',
+    'prefix'   => '',
 ]);
 
 $capsule->setAsGlobal();
