@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services;
 
 use App\Models\Session;
@@ -58,8 +59,8 @@ class LimitChecker
         return array_key_exists($group, $this->groupModuleLimits)
             && array_key_exists($module, $this->groupModuleLimits[$group])
             && array_key_exists($hour, $this->groupModuleLimits[$group][$module])
-                ? $this->groupModuleLimits[$group][$module][$hour]
-                : null;
+            ? $this->groupModuleLimits[$group][$module][$hour]
+            : null;
     }
 
     private function getFallbackModule(string $module): ?string
@@ -79,7 +80,7 @@ class LimitChecker
 
         if (!$session) {
             error_log("No active session found for PC: {$pc}");
-            return ['status' => 404];
+            return ['status' => 200, 'code' => '3'];
         }
 
         error_log("Found session: ID={$session->SES_SesjaID}, User={$session->SES_OpeIdent}, Modul={$session->SES_Modul}");
@@ -89,54 +90,47 @@ class LimitChecker
             ->get(['SES_SesjaID', 'SES_ADOSPID', 'SES_OpeIdent', 'SES_Modul', 'SES_Start']);
 
         if ($sessions->count() <= $this->activeUsersCheck) {
-            error_log("User count ({$sessions->count()}) below threshold ({$this->activeUsersCheck}) — OK");
-            return ['status' => 200, 'user' => $session->SES_OpeIdent];
+            error_log("User count ({$sessions->count()}) below threshold — OK");
+            return ['status' => 200, 'code' => '2'];
         }
 
-        $sessionsArr = [];
-        foreach ($sessions as $s) {
-            $sessionsArr[] = [
-                'Id' => $s->SES_SesjaID,
-                'Spid' => $s->SES_ADOSPID,
-                'UserName' => $s->SES_OpeIdent,
-                'Module' => $s->SES_Modul ?? '',
-                'Start' => (int)($s->SES_Start ?? 0)
-            ];
-        }
+        $sessionsArr = $sessions->map(fn($s) => [
+            'Id' => $s->SES_SesjaID,
+            'Spid' => $s->SES_ADOSPID,
+            'UserName' => $s->SES_OpeIdent,
+            'Module' => $s->SES_Modul ?? '',
+            'Start' => (int)($s->SES_Start ?? 0)
+        ])->toArray();
 
-        $target = null;
-        foreach ($sessionsArr as $sess) {
-            if ($sess['Id'] === $session->SES_SesjaID) {
-                $target = $sess;
-                break;
-            }
-        }
+        $target = collect($sessionsArr)->firstWhere('Id', $session->SES_SesjaID);
 
         if (!$target) {
             error_log("Target session not found in session list");
-            return ['status' => 200, 'user' => $session->SES_OpeIdent];
+            return ['status' => 200, 'code' => '2'];
         }
 
         $module = $target['Module'];
-        error_log("Target session: User={$target['UserName']}, Module={$module}");
+        $userName = $target['UserName'];
+        error_log("Target session: User={$userName}, Module={$module}");
 
-        // Общий модульный лимит
+        // Проверка общего модуля
         if (array_key_exists($module, $this->moduleLimits)) {
-            $moduleSessions = array_filter($sessionsArr, fn($s) =>
+            $moduleSessions = array_values(array_filter(
+                $sessionsArr,
+                fn($s) =>
                 $s['Module'] === $module &&
-                !in_array($s['UserName'], $this->exceptionUsers, true)
-            );
+                    !in_array($s['UserName'], $this->exceptionUsers, true)
+            ));
             usort($moduleSessions, fn($a, $b) => $a['Start'] <=> $b['Start']);
 
-            foreach (array_values($moduleSessions) as $i => $s) {
+            foreach ($moduleSessions as $i => $s) {
                 if ($s['Id'] === $target['Id'] && $i >= $this->moduleLimits[$module]) {
-                    error_log("Module limit exceeded: Module={$module}, Index={$i}, Limit={$this->moduleLimits[$module]}");
-                    return ['status' => 429, 'reason' => 'ModuleLimit', 'user' => $session->SES_OpeIdent];
+                    error_log("Module limit exceeded");
+                    return ['status' => 200, 'code' => '1'];
                 }
             }
         }
 
-        $userName = $target['UserName'];
         $group = $this->userGroups[$userName] ?? null;
         error_log("Group resolved for user={$userName}: " . ($group ?? 'null'));
 
@@ -144,26 +138,48 @@ class LimitChecker
         if ($group) {
             $hour = intval(date('G'));
             $max = $this->getMaxForGroupModule($group, $module, $hour);
-            error_log("Group limit lookup: Group={$group}, Module={$module}, Hour={$hour}, Max=" . var_export($max, true));
 
             if ($max === null) {
                 $fallback = $this->getFallbackModule($module);
-                error_log("Fallback for module {$module} is: " . var_export($fallback, true));
-
                 if ($fallback) {
                     $max = $this->getMaxForGroupModule($group, $fallback, $hour);
-                    error_log("Using fallback module {$fallback}, Max=" . var_export($max, true));
                 }
-
                 if ($max === null && array_key_exists($module, $this->moduleLimits)) {
                     $max = $this->moduleLimits[$module];
-                    error_log("Using global module limit as fallback: {$max}");
                 }
             }
 
             if ($max !== null) {
-                error_log("Effective max license count: {$max}");
+                // ВРЕМЕННЫЕ ПРЕДУПРЕЖДЕНИЯ
+                $usedModule = $module;
+                if (!isset($this->groupModuleLimits[$group][$usedModule]) && $fallback) {
+                    $usedModule = $fallback;
+                }
 
+                if (isset($this->groupModuleLimits[$group][$usedModule])) {
+                    foreach ($this->groupModuleLimits[$group][$usedModule] as $h => $v) {
+                        if ((int)$v > 0) {
+                            $allowedHours[] = (int)$h;
+                        }
+                    }
+                }
+
+                if (!empty($allowedHours)) {
+                    $lastAllowedHour = max($allowedHours);
+                    $now = new \DateTime();
+                    $minute = (int)$now->format('i');
+                    $currentHour = (int)$now->format('G');
+
+                    if ($currentHour === $lastAllowedHour && $minute >= 45 && $minute <= 47) {
+                        return ['status' => 200, 'code' => '4'];
+                    }
+
+                    if ($currentHour === $lastAllowedHour && $minute >= 55 && $minute <= 57) {
+                        return ['status' => 200, 'code' => '5'];
+                    }
+                }
+
+                // Проверка группового лимита
                 $groupSessions = array_filter($sessionsArr, function ($s) use ($group, $module) {
                     $grp = $this->userGroups[$s['UserName']] ?? null;
                     return $grp === $group &&
@@ -174,18 +190,12 @@ class LimitChecker
                 usort($groupSessions, fn($a, $b) => $a['Start'] <=> $b['Start']);
                 foreach (array_values($groupSessions) as $i => $s) {
                     if ($s['Id'] === $target['Id'] && $i >= $max) {
-                        error_log("Group limit exceeded: Group={$group}, Index={$i}, Max={$max}");
-                        return ['status' => 429, 'reason' => 'ModuleGroupLimit', 'user' => $session->SES_OpeIdent];
+                        return ['status' => 200, 'code' => '1'];
                     }
                 }
-            } else {
-                error_log("No max limit found at all for group {$group} and module {$module}");
             }
-        } else {
-            error_log("Group not found for user: {$userName}");
         }
 
-        error_log("Session allowed: {$session->SES_OpeIdent}");
-        return ['status' => 200, 'user' => $session->SES_OpeIdent];
+        return ['status' => 200, 'code' => '2'];
     }
 }
