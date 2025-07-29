@@ -72,6 +72,77 @@ class LimitChecker
         return $this->linkedModules[$module][0] ?? null;
     }
 
+    /**
+     * Calculate remaining minutes for a given user and module based on
+     * configured group module limits.
+     * Returns null when no limits defined.
+     */
+    private function calculateTimeLeft(string $userName, string $module): ?int
+    {
+        $group = $this->userGroups[$userName] ?? null;
+        if (!$group) {
+            return null;
+        }
+
+        $usedModule = $module;
+        $fallback = $this->getFallbackModule($module);
+        if (!isset($this->groupModuleLimits[$group][$usedModule]) && $fallback) {
+            $usedModule = $fallback;
+        }
+
+        $allowedHours = [];
+        if (isset($this->groupModuleLimits[$group][$usedModule])) {
+            foreach ($this->groupModuleLimits[$group][$usedModule] as $h => $v) {
+                if ((int)$v > 0) {
+                    $allowedHours[] = (int)$h;
+                }
+            }
+        }
+
+        if (empty($allowedHours)) {
+            return null;
+        }
+
+        $lastHour = max($allowedHours);
+        $now = new \DateTime();
+        $currentHour = (int)$now->format('G');
+        $minute = (int)$now->format('i');
+
+        if ($currentHour > $lastHour) {
+            return 0;
+        }
+
+        $minutes = ($lastHour - $currentHour) * 60 + (60 - $minute);
+        if ($currentHour === $lastHour) {
+            $minutes = 60 - $minute;
+        }
+
+        return $minutes;
+    }
+
+    /**
+     * Get remaining time information for all active users.
+     *
+     * @return array<int, array{user:string,pc:string,time_left:?int}>
+     */
+    public function getUsersTimeLeft(): array
+    {
+        $sessions = Session::where('SES_Stop', 0)
+            ->whereNotNull('SES_ADOSPID')
+            ->get(['SES_OpeIdent', 'SES_Modul', 'SES_Komputer']);
+
+        $info = [];
+        foreach ($sessions as $s) {
+            $info[] = [
+                'user' => $s->SES_OpeIdent,
+                'pc' => $s->SES_Komputer,
+                'time_left' => $this->calculateTimeLeft($s->SES_OpeIdent, $s->SES_Modul ?? '')
+            ];
+        }
+
+        return $info;
+    }
+
 
 public function check(string $pc): array
 {
