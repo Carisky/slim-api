@@ -9,14 +9,13 @@ function checkLimit(Request $request, Response $response, array $args): Response
     $checker = new LimitChecker();
     $result = $checker->check($pc);
 
-    $response->getBody()->write(json_encode([
-        'code' => $result['code'],
-    ]));
+    $response->getBody()->write((string)$result['code']);
 
     return $response
-        ->withHeader('Content-Type', 'application/json')
+        ->withHeader('Content-Type', 'text/plain')
         ->withStatus(200);
 }
+
 
 
 return function (App $app) {
