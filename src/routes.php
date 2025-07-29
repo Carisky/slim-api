@@ -15,9 +15,19 @@ function checkLimit(Request $request, Response $response, array $args): Response
         ->withHeader('Content-Type', 'text/plain')
         ->withStatus(200);
 }
+function usersInfo(Request $request, Response $response): Response {
+    $checker = new LimitChecker();
+    $data = $checker->getUsersTimeLeft();
+    $response->getBody()->write(json_encode($data));
+    return $response
+        ->withHeader("Content-Type", "application/json")
+        ->withStatus(200);
+}
+
 
 
 
 return function (App $app) {
     $app->get('/api/limits/check/{pc}', 'checkLimit');
+    $app->get('/api/limits/users', 'usersInfo');
 };
