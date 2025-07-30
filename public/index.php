@@ -3,6 +3,7 @@ require __DIR__ . '/../vendor/autoload.php';
 
 use Slim\Factory\AppFactory;
 use Illuminate\Database\Capsule\Manager as Capsule;
+use App\Middleware\AuthMiddleware;
 
 date_default_timezone_set('Europe/Warsaw');
 
@@ -23,6 +24,9 @@ $capsule->addConnection([
 
 $capsule->setAsGlobal();
 $capsule->bootEloquent();
+
+// Protect write routes with API key middleware
+$app->add(new AuthMiddleware());
 
 // Маршруты
 (require __DIR__ . '/../src/routes.php')($app);
