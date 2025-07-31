@@ -4,8 +4,13 @@ require __DIR__ . '/../vendor/autoload.php';
 use Slim\Factory\AppFactory;
 use Illuminate\Database\Capsule\Manager as Capsule;
 use App\Middleware\AuthMiddleware;
+use Dotenv\Dotenv;
 
 date_default_timezone_set('Europe/Warsaw');
+
+// Загрузка .env
+$dotenv = Dotenv::createImmutable(__DIR__ . '/../');
+$dotenv->load();
 
 $app = AppFactory::create();
 

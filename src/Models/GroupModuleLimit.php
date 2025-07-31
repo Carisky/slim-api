@@ -14,4 +14,5 @@ class GroupModuleLimit extends Model
     protected $primaryKey = 'Id';
 
     public $timestamps = false;
+    protected $fillable = ['GroupCode', 'Module', 'Hour', 'MaxLicenses'];
 }

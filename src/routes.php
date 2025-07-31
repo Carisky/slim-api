@@ -9,11 +9,11 @@ use App\Models\UserGroup;
 
 return function (App $app) {
 
+    // ----- Прочие роуты -----
     $app->get('/api/limits/check/{pc}', function (Request $request, Response $response, array $args): Response {
         $pc = $args['pc'];
         $checker = new LimitChecker();
         $result = $checker->check($pc);
-
         $response->getBody()->write((string)$result['code']);
         return $response->withHeader('Content-Type', 'text/plain')->withStatus(200);
     });
@@ -29,10 +29,8 @@ return function (App $app) {
         $user = $args['user'];
         $checker = new LimitChecker();
         $result = $checker->stopSession($user);
-
         $status = $result ? 200 : 404;
         $body = $result ? "Session stopped for user: $user" : "No active session found for user: $user";
-
         $response->getBody()->write($body);
         return $response->withStatus($status)->withHeader('Content-Type', 'text/plain');
     });
@@ -54,7 +52,7 @@ return function (App $app) {
     });
 
     $app->post('/api/group-module-limits', function (Request $request, Response $response): Response {
-        $data = (array)$request->getParsedBody();
+        $data = json_decode($request->getBody()->getContents(), true);
         $limit = new GroupModuleLimit();
         $limit->GroupCode = $data['GroupCode'] ?? null;
         $limit->Module = $data['Module'] ?? null;
@@ -70,7 +68,7 @@ return function (App $app) {
         if (!$limit) {
             return $response->withStatus(404);
         }
-        $data = (array)$request->getParsedBody();
+        $data = json_decode($request->getBody()->getContents(), true);
         foreach (['GroupCode', 'Module', 'Hour', 'MaxLicenses'] as $field) {
             if (array_key_exists($field, $data)) {
                 $limit->$field = $data[$field];
@@ -97,8 +95,8 @@ return function (App $app) {
         return $response->withHeader('Content-Type', 'application/json');
     });
 
-    $app->get('/api/user-groups/{id}', function (Request $request, Response $response, array $args): Response {
-        $group = UserGroup::find($args['id']);
+    $app->get('/api/user-groups/{userName}', function (Request $request, Response $response, array $args): Response {
+        $group = UserGroup::find($args['userName']); // userName = PK
         if (!$group) {
             return $response->withStatus(404);
         }
@@ -107,8 +105,9 @@ return function (App $app) {
     });
 
     $app->post('/api/user-groups', function (Request $request, Response $response): Response {
-        $data = (array)$request->getParsedBody();
+        $data = json_decode($request->getBody()->getContents(), true);
         $group = new UserGroup();
+        $group->UserName = $data['UserName'] ?? null;
         $group->Group = $data['Group'] ?? null;
         $group->WindowsUser = $data['WindowsUser'] ?? null;
         $group->save();
@@ -116,12 +115,12 @@ return function (App $app) {
         return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
     });
 
-    $app->put('/api/user-groups/{id}', function (Request $request, Response $response, array $args): Response {
-        $group = UserGroup::find($args['id']);
+    $app->put('/api/user-groups/{userName}', function (Request $request, Response $response, array $args): Response {
+        $group = UserGroup::find($args['userName']);
         if (!$group) {
             return $response->withStatus(404);
         }
-        $data = (array)$request->getParsedBody();
+        $data = json_decode($request->getBody()->getContents(), true);
         foreach (['Group', 'WindowsUser'] as $field) {
             if (array_key_exists($field, $data)) {
                 $group->$field = $data[$field];
@@ -132,13 +131,12 @@ return function (App $app) {
         return $response->withHeader('Content-Type', 'application/json');
     });
 
-    $app->delete('/api/user-groups/{id}', function (Request $request, Response $response, array $args): Response {
-        $group = UserGroup::find($args['id']);
+    $app->delete('/api/user-groups/{userName}', function (Request $request, Response $response, array $args): Response {
+        $group = UserGroup::find($args['userName']);
         if (!$group) {
             return $response->withStatus(404);
         }
         $group->delete();
         return $response->withStatus(204);
     });
-
 };

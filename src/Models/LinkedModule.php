@@ -11,4 +11,5 @@ class LinkedModule extends Model
     protected $table = 'LinkedModules';
 
     public $timestamps = false;
+    protected $fillable = ['GroupCode', 'ModuleName'];
 }
