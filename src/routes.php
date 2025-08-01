@@ -27,13 +27,25 @@ return function (App $app) {
 
     $app->post('/api/limits/users/session/stop/{user}', function (Request $request, Response $response, array $args): Response {
         $user = $args['user'];
+        $forceKill = $request->getHeaderLine('X-Force-Kill') === '1';
+
         $checker = new LimitChecker();
-        $result = $checker->stopSession($user);
-        $status = $result ? 200 : 404;
-        $body = $result ? "Session stopped for user: $user" : "No active session found for user: $user";
+
+        if ($forceKill) {
+            error_log("Force DELETE session for user: $user");
+            $result = $checker->deleteSession($user);
+            $status = $result ? 200 : 404;
+            $body = $result ? "Session deleted for user: $user" : "No active session to delete for user: $user";
+        } else {
+            $result = $checker->stopSession($user);
+            $status = $result ? 200 : 404;
+            $body = $result ? "Session stopped for user: $user" : "No active session found for user: $user";
+        }
         $response->getBody()->write($body);
         return $response->withStatus($status)->withHeader('Content-Type', 'text/plain');
     });
+
+
 
     // ----- Group module limits -----
     $app->get('/api/group-module-limits', function (Request $request, Response $response): Response {

@@ -305,4 +305,20 @@ class LimitChecker
 
         return $saved;
     }
+    public function deleteSession(string $user): bool
+    {
+        $session = Session::where('SES_OpeIdent', $user)
+            ->where('SES_Stop', 0)
+            ->orderByDesc('SES_Start')
+            ->first();
+
+        if (!$session) {
+            error_log("deleteSession: No active session found for user: $user");
+            return false;
+        }
+
+        $deleted = $session->delete();
+        error_log("deleteSession: Session for user {$user} deleted. Result: " . ($deleted ? "OK" : "FAIL"));
+        return $deleted;
+    }
 }
