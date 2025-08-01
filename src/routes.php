@@ -25,6 +25,13 @@ return function (App $app) {
         return $response->withHeader("Content-Type", "application/json")->withStatus(200);
     });
 
+    $app->get('/api/schedule/{userName}', function (Request $request, Response $response, array $args): Response {
+        $checker = new LimitChecker();
+        $schedule = $checker->getUserSchedule($args['userName']);
+        $response->getBody()->write(json_encode($schedule));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+    });
+
     $app->post('/api/limits/users/session/stop/{user}', function (Request $request, Response $response, array $args): Response {
         $user = $args['user'];
         $forceKill = $request->getHeaderLine('X-Force-Kill') === '1';
