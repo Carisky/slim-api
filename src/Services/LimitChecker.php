@@ -147,6 +147,36 @@ class LimitChecker
         return $info;
     }
 
+    /**
+     * Get schedule of allowed hours for all modules for a given user.
+     *
+     * @param string $userName
+     * @return array<string, array<int>>
+     */
+    public function getUserSchedule(string $userName): array
+    {
+        $group = $this->userGroups[$userName] ?? null;
+        if (!$group || !isset($this->groupModuleLimits[$group])) {
+            return [];
+        }
+
+        $schedule = [];
+        foreach ($this->groupModuleLimits[$group] as $module => $hours) {
+            $allowed = [];
+            foreach ($hours as $h => $max) {
+                if ((int)$max > 0) {
+                    $allowed[] = (int)$h;
+                }
+            }
+            sort($allowed);
+            if (!empty($allowed)) {
+                $schedule[$module] = $allowed;
+            }
+        }
+
+        return $schedule;
+    }
+
 
     public function check(string $pc): array
     {
