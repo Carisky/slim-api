@@ -16,13 +16,11 @@ class LimitChecker
         'Biuro Księgowe',
         'TSL SILESIA SP. Z O.O.'
     ];
-
     private array $userGroups = []; // [UserName => Group]
     private array $groupModuleLimits = [];
     private array $moduleLimits = [];
     private array $linkedModules = [];
     private int $activeUsersCheck = 0;
-
     public function __construct()
     {
         $base = dirname(__DIR__, 2) . '/ComarchBlock/';
@@ -57,7 +55,6 @@ class LimitChecker
     {
         return explode(':', $pc)[0];
     }
-
     private function getMaxForGroupModule(string $group, string $module, int $hour): mixed
     {
         return array_key_exists($group, $this->groupModuleLimits)
@@ -66,12 +63,10 @@ class LimitChecker
             ? $this->groupModuleLimits[$group][$module][$hour]
             : null;
     }
-
     private function getFallbackModule(string $module): ?string
     {
         return $this->linkedModules[$module][0] ?? null;
     }
-
     /**
      * Calculate remaining minutes for a given user and module based on
      * configured group module limits.
@@ -122,8 +117,6 @@ class LimitChecker
 
         return $minutes;
     }
-
-
     /**
      * Get remaining time information for all active users.
      *
@@ -137,10 +130,12 @@ class LimitChecker
 
         $info = [];
         foreach ($sessions as $s) {
+            $user = $s->SES_OpeIdent;
             $info[] = [
-                'user' => $s->SES_OpeIdent,
+                'user' => $user,
                 'pc' => $s->SES_Komputer,
-                'time_left' => $this->calculateTimeLeft($s->SES_OpeIdent, $s->SES_Modul ?? '')
+                'time_left' => $this->calculateTimeLeft($user, $s->SES_Modul ?? ''),
+                'exception_group' => in_array($user, $this->exceptionUsers, true),
             ];
         }
 
@@ -176,8 +171,6 @@ class LimitChecker
 
         return $schedule;
     }
-
-
     public function check(string $pc): array
     {
         error_log("== CHECK STARTED for PC: {$pc}");
