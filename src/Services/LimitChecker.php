@@ -7,15 +7,11 @@ use App\Models\UserGroup;
 use App\Models\ModuleLimit;
 use App\Models\GroupModuleLimit;
 use App\Models\LinkedModule;
+use App\Models\ExceptionUser;
 
 class LimitChecker
 {
-    private array $exceptionUsers = [
-        'ADMIN',
-        'Zarząd',
-        'Biuro Księgowe',
-        'TSL SILESIA SP. Z O.O.'
-    ];
+    private array $exceptionUsers = [];
     private array $userGroups = []; // [UserName => Group]
     private array $groupModuleLimits = [];
     private array $moduleLimits = [];
@@ -30,6 +26,8 @@ class LimitChecker
             $xml = simplexml_load_file($cfgPath);
             $this->activeUsersCheck = intval($xml->ActiveUsersCheck ?? 0);
         }
+
+        $this->exceptionUsers = ExceptionUser::pluck('UserName')->toArray();
 
         $this->userGroups = UserGroup::all()
             ->mapWithKeys(fn($u) => [$u->UserName => $u->Group])

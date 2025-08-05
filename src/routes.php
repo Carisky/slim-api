@@ -6,6 +6,7 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 use App\Services\LimitChecker;
 use App\Models\GroupModuleLimit;
 use App\Models\UserGroup;
+use App\Models\ExceptionUser;
 
 return function (App $app) {
 
@@ -156,6 +157,54 @@ return function (App $app) {
             return $response->withStatus(404);
         }
         $group->delete();
+        return $response->withStatus(204);
+    });
+
+    // ----- Exception users -----
+    $app->get('/api/exception-users', function (Request $request, Response $response): Response {
+        $users = ExceptionUser::all();
+        $response->getBody()->write($users->toJson());
+        return $response->withHeader('Content-Type', 'application/json');
+    });
+
+    $app->get('/api/exception-users/{id}', function (Request $request, Response $response, array $args): Response {
+        $user = ExceptionUser::find($args['id']);
+        if (!$user) {
+            return $response->withStatus(404);
+        }
+        $response->getBody()->write($user->toJson());
+        return $response->withHeader('Content-Type', 'application/json');
+    });
+
+    $app->post('/api/exception-users', function (Request $request, Response $response): Response {
+        $data = json_decode($request->getBody()->getContents(), true);
+        $user = new ExceptionUser();
+        $user->UserName = $data['UserName'] ?? null;
+        $user->save();
+        $response->getBody()->write($user->toJson());
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
+    });
+
+    $app->put('/api/exception-users/{id}', function (Request $request, Response $response, array $args): Response {
+        $user = ExceptionUser::find($args['id']);
+        if (!$user) {
+            return $response->withStatus(404);
+        }
+        $data = json_decode($request->getBody()->getContents(), true);
+        if (array_key_exists('UserName', $data)) {
+            $user->UserName = $data['UserName'];
+        }
+        $user->save();
+        $response->getBody()->write($user->toJson());
+        return $response->withHeader('Content-Type', 'application/json');
+    });
+
+    $app->delete('/api/exception-users/{id}', function (Request $request, Response $response, array $args): Response {
+        $user = ExceptionUser::find($args['id']);
+        if (!$user) {
+            return $response->withStatus(404);
+        }
+        $user->delete();
         return $response->withStatus(204);
     });
 };
