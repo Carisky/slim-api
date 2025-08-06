@@ -39,4 +39,4 @@ WORKDIR /var/www/html
 COPY .env .env
 COPY . .
 
-CMD ["php", "-S", "0.0.0.0:80", "-t", "public"]
+CMD ["php", "-S", "0.0.0.0:80", "-t", "public", "public/index.php"]

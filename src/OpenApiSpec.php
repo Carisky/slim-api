@@ -3,7 +3,12 @@
 use OpenApi\Annotations as OA;
 
 /**
- * @OA\Info(title="Slim API", version="1.0")
+ * @OA\OpenApi(
+ *     info=@OA\Info(
+ *         title="Slim API",
+ *         version="1.0"
+ *     )
+ * )
  *
  * @OA\Schema(
  *     schema="UserTimeLeft",

@@ -432,7 +432,8 @@ return function (App $app) {
 
     // ----- Swagger docs -----
     $app->get('/swagger.json', function (Request $request, Response $response): Response {
-        $openapi = Generator::scan([__DIR__]);
+        $generator = new Generator();
+        $openapi = $generator->generate([__DIR__]);
         $response->getBody()->write($openapi->toJson());
         return $response->withHeader('Content-Type', 'application/json');
     });
