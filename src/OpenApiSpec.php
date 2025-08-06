@@ -1,13 +1,13 @@
 <?php
 
+namespace App;
+
 use OpenApi\Annotations as OA;
 
 /**
- * @OA\OpenApi(
- *     info=@OA\Info(
- *         title="Slim API",
- *         version="1.0"
- *     )
+ * @OA\Info(
+ *     title="Slim API",
+ *     version="1.0"
  * )
  *
  * @OA\Schema(
