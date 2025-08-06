@@ -2,9 +2,19 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use OpenApi\Annotations as OA;
 
 /**
  * Model for per-group module limits by hour.
+ *
+ * @OA\Schema(
+ *     schema="GroupModuleLimit",
+ *     @OA\Property(property="Id", type="integer"),
+ *     @OA\Property(property="GroupCode", type="string"),
+ *     @OA\Property(property="Module", type="string"),
+ *     @OA\Property(property="Hour", type="integer"),
+ *     @OA\Property(property="MaxLicenses", type="integer")
+ * )
  */
 class GroupModuleLimit extends Model
 {

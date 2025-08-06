@@ -2,7 +2,19 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use OpenApi\Annotations as OA;
 
+/**
+ * @OA\Schema(
+ *     schema="Session",
+ *     @OA\Property(property="SES_SesjaID", type="integer"),
+ *     @OA\Property(property="SES_Komputer", type="string"),
+ *     @OA\Property(property="SES_OpeIdent", type="string"),
+ *     @OA\Property(property="SES_Modul", type="string"),
+ *     @OA\Property(property="SES_Start", type="string", format="date-time"),
+ *     @OA\Property(property="SES_Stop", type="integer", nullable=true)
+ * )
+ */
 class Session extends Model
 {
     /**
